@@ -1,12 +1,7 @@
-# Pascal.RawOperations
-.NET library to create PascalCoin rawOperations
-Based on the source code of [PascalCoin](https://github.com/PascalCoin/PascalCoin) and [NPascalCoin](https://github.com/Sphere10/NPascalCoin). 
-RawOperations documentation: https://github.com/rabarbers/Pascal.RawOperations/wiki
-## Nuget package
-https://www.nuget.org/packages/Pascal.RawOperations
-### RawOperations demo
-RawOperations can be executed using [pascal.wallet.connector](https://github.com/rabarbers/pascal.wallet.connector) - .NET5 library to call Pascal full node Wallet JSON RPC API methods.
-```c#
+﻿// © 2021 Contributors to the Pascal.RawOperations
+// This work is licensed under the terms of the MIT license.
+// See the LICENSE file in the project root for more information.
+
 using System;
 using System.Threading.Tasks;
 using Pascal.Wallet.Connector;
@@ -44,18 +39,3 @@ namespace Pascal.RawOperations.Demo
         }
     }
 }
-``` 
-
-### Supported features
-* RawOperation creation for transactions
-* RawOperation creation for data operations
-* Supported payload methods: public and AES encrypted
-
-### For technical support contact Rabarbers and be polite
-
-## Roadmap
-* Support payload encryption using DestinationPublicKey and SenderPublicKey methods.
-* Ability to create rawOperations for other kinds of Pascal operations.
-
-## Feedback & Donations
-pascal.wallet.connector account 834853-50.
