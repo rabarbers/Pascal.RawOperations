@@ -109,7 +109,9 @@ namespace Pascal.RawOperations
             stream.Write(BitConverter.GetBytes((ushort)payloadBytes.Length));
             stream.Write(payloadBytes);
 
-            var unsignedOperation = CreateUnsignedDataOperation(signer, signerNOperations, sender, receiver, guid.ToByteArray(), 1, 2, amount, fee, payloadBytes);
+            var unsignedOperation = CreateUnsignedDataOperation(signer, signerNOperations, sender, receiver, guid.ToByteArray(), dataType, sequence, amount, fee, payloadType, payloadBytes);
+
+            var test = Convert.ToHexString(unsignedOperation);
 
             var hash = CryptoHelper.GetHash(unsignedOperation);
 
@@ -156,7 +158,7 @@ namespace Pascal.RawOperations
                 var payloadType = (PayloadType)Convert.FromHexString(singleRawOperation.Substring(120, 2))[0];
                 var payloadLength = BitConverter.ToUInt16(Convert.FromHexString(singleRawOperation.Substring(122, 4)));
                 var payloadBytes = Convert.FromHexString(singleRawOperation.Substring(126, payloadLength * 2));
-                var unsignedOperation = CreateUnsignedDataOperation(signer, signerNOperations - 1, sender, receiver, guid, datatype, sequence, amount, fee, payloadBytes);
+                var unsignedOperation = CreateUnsignedDataOperation(signer, signerNOperations - 1, sender, receiver, guid, datatype, sequence, amount, fee, payloadType, payloadBytes);
                 var signatureRLength = BitConverter.ToUInt16(Convert.FromHexString(singleRawOperation.Substring(126 + payloadLength * 2, 4)));
                 var signatureR = Convert.FromHexString(singleRawOperation.Substring(130 + payloadLength * 2, signatureRLength * 2));
                 var signatureSLength = BitConverter.ToUInt16(Convert.FromHexString(singleRawOperation.Substring(130 + payloadLength * 2 + signatureRLength * 2, 4)));
@@ -198,7 +200,7 @@ namespace Pascal.RawOperations
             return stream.ToArray();
         }
 
-        private static byte[] CreateUnsignedDataOperation(uint signer, uint signerNOperations, uint sender, uint receiver, byte[] guid, ushort dataType, ushort sequence, decimal amount, decimal fee, byte[] payloadBytes)
+        private static byte[] CreateUnsignedDataOperation(uint signer, uint signerNOperations, uint sender, uint receiver, byte[] guid, ushort dataType, ushort sequence, decimal amount, decimal fee, PayloadType payloadType, byte[] payloadBytes)
         {
             using var stream = new MemoryStream();
             stream.Write(BitConverter.GetBytes(signer));
@@ -210,6 +212,7 @@ namespace Pascal.RawOperations
             stream.Write(BitConverter.GetBytes(sequence));
             stream.Write(BitConverter.GetBytes((ulong)(amount * 10000)));
             stream.Write(BitConverter.GetBytes((ulong)(fee * 10000)));
+            stream.WriteByte((byte)payloadType);
             stream.Write(BitConverter.GetBytes((ushort)payloadBytes.Length));
             stream.Write(payloadBytes);
             stream.WriteByte((byte)OperationType.DataOperation);
