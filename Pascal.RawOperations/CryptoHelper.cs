@@ -75,7 +75,7 @@ namespace Pascal.RawOperations
                     return (keyType, key);
                 }
             }
-            return (0, string.Empty);
+            throw new ArgumentException("Provided invalid private key!");
         }
 
         public static (EncryptionType, string, string) GetPublicKeyInfo(string encodedPublicKey)
@@ -95,7 +95,7 @@ namespace Pascal.RawOperations
                     }
                 }
             }
-            return (0, string.Empty, string.Empty);
+            throw new ArgumentException("Provided invalid public key!");
         }
 
         public static byte[] AesEncrypt(string message, string password)

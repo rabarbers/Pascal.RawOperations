@@ -10,10 +10,12 @@
     <Description>.NET library to create PascalCoin rawOperations</Description>
     <Copyright>Pascal.RawOperations Contributors</Copyright>
     <PackageProjectUrl>https://github.com/rabarbers/Pascal.RawOperations</PackageProjectUrl>
+    <Version>1.0.1</Version>
+    <PackageReleaseNotes>Used Portable.BouncyCastle. NET Core version did not work with Blazor on .NET 5.0</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="BouncyCastle.NetCore" Version="1.8.8" />
+    <PackageReference Include="Portable.BouncyCastle" Version="1.8.10" />
   </ItemGroup>
 
 </Project>
