@@ -125,6 +125,66 @@ namespace Pascal.RawOperations
             return Convert.ToHexString(stream.ToArray());
         }
 
+        public static string CreateChangeKeyOperation(uint signer, uint target, string signerPrivateKey, string newEncodedPublicKey, uint signerNOperations, decimal fee,
+            PayloadType payloadType = PayloadType.NonDeterministic, string payload = null, string password = null)
+        {
+            using var stream = new MemoryStream();
+
+            stream.Write(BitConverter.GetBytes((uint)1)); //single operation
+            stream.Write(BitConverter.GetBytes((ushort)OperationType.ChangeKeySignedByAnotherAccount));
+            stream.Write(BitConverter.GetBytes((ushort)5)); //protocol
+
+            stream.Write(BitConverter.GetBytes(signer));
+            stream.Write(BitConverter.GetBytes(target));
+            stream.Write(BitConverter.GetBytes(signerNOperations + 1));
+            
+            stream.Write(BitConverter.GetBytes((ulong)(fee * 10000)));
+
+            stream.WriteByte((byte)payloadType);
+            byte[] payloadBytes;
+            switch (payloadType)
+            {
+                case PayloadType.Public | PayloadType.AsciiFormatted:
+                    payloadBytes = Encoding.UTF8.GetBytes(payload);
+                    break;
+                case PayloadType.PasswordEncrypted | PayloadType.AsciiFormatted:
+                    payloadBytes = CryptoHelper.AesEncrypt(payload, password);
+                    break;
+                case PayloadType.RecipientKeyEncrypted | PayloadType.AsciiFormatted:
+                    throw new NotImplementedException();
+                case PayloadType.SenderKeyEncrypted | PayloadType.AsciiFormatted:
+                    throw new NotImplementedException();
+                default:
+                    payloadBytes = new byte[0];
+                    break;
+            }
+            stream.Write(BitConverter.GetBytes((ushort)payloadBytes.Length));
+            stream.Write(payloadBytes);
+
+            stream.Write(new byte[] { 0, 0, 0, 0, 0, 0, 70, 0}); //8 bytes - constant
+
+            var (newPubKeyNid, newPubKeyX, newPubKeyY) = CryptoHelper.GetPublicKeyInfo(newEncodedPublicKey);
+            var x = Convert.FromHexString(newPubKeyX);
+            var y = Convert.FromHexString(newPubKeyY);
+            stream.Write(BitConverter.GetBytes((ushort)newPubKeyNid));
+            stream.Write(BitConverter.GetBytes((ushort)x.Length));
+            stream.Write(x);
+            stream.Write(BitConverter.GetBytes((ushort)y.Length));
+            stream.Write(y);
+
+            var unsignedOperation = CreateUnsignedChangeKeyOperation(signer, target, signerNOperations, fee, payloadType, payloadBytes, newPubKeyNid, x, y);
+
+            var hash = CryptoHelper.GetHash(unsignedOperation);
+            var (signerKeyType, signerKey) = CryptoHelper.GetPrivateKeyInfo(signerPrivateKey);
+            var (r, s) = CryptoHelper.SignOperation(signerKeyType, signerKey, hash);
+            stream.Write(BitConverter.GetBytes((ushort)r.Length));
+            stream.Write(r);
+            stream.Write(BitConverter.GetBytes((ushort)s.Length));
+            stream.Write(s);
+
+            return Convert.ToHexString(stream.ToArray());
+        }
+
         public static bool VerifyRawOperation(string senderEncodedPublicKey, string singleRawOperation)
         {
             (byte[], byte[], byte[]) GetTransactionSignature(string singleRawOperation)
@@ -165,6 +225,28 @@ namespace Pascal.RawOperations
                 var signatureS = Convert.FromHexString(singleRawOperation.Substring(134 + payloadLength * 2 + signatureRLength * 2, signatureSLength * 2));
                 return (unsignedOperation, signatureR, signatureS);
             }
+            (byte[], byte[], byte[]) GetPublicKeyChangingOperationSignature(string singleRawOperation)
+            {
+                var signer = BitConverter.ToUInt32(Convert.FromHexString(singleRawOperation.Substring(16, 8)));
+                var target = BitConverter.ToUInt32(Convert.FromHexString(singleRawOperation.Substring(24, 8)));
+                var signerNOperations = BitConverter.ToUInt32(Convert.FromHexString(singleRawOperation.Substring(32, 8)));
+                var fee = BitConverter.ToUInt32(Convert.FromHexString(singleRawOperation.Substring(40, 16))) / 10000M;
+                var payloadType = (PayloadType)Convert.FromHexString(singleRawOperation.Substring(56, 2))[0];
+                var payloadLength = BitConverter.ToUInt16(Convert.FromHexString(singleRawOperation.Substring(58, 4)));
+                var payloadBytes = Convert.FromHexString(singleRawOperation.Substring(62, payloadLength * 2));
+                const byte unknownConstant = 16; //8 bytes (16 Hexadecimal symbols) unknown constant
+                var nid = BitConverter.ToUInt16(Convert.FromHexString(singleRawOperation.Substring(62 + payloadLength * 2 + unknownConstant, 4)));
+                var xLength = BitConverter.ToUInt16(Convert.FromHexString(singleRawOperation.Substring(66 + payloadLength * 2 + unknownConstant, 4)));
+                var x = Convert.FromHexString(singleRawOperation.Substring(70 + payloadLength * 2 + unknownConstant, xLength * 2));
+                var yLength = BitConverter.ToUInt16(Convert.FromHexString(singleRawOperation.Substring(70 + payloadLength * 2 + unknownConstant + xLength * 2, 4)));
+                var y = Convert.FromHexString(singleRawOperation.Substring(74 + payloadLength * 2 + unknownConstant + xLength * 2, yLength * 2));
+                var unsignedOperation = CreateUnsignedChangeKeyOperation(signer, target, signerNOperations - 1, fee, payloadType, payloadBytes, (EncryptionType)nid, x, y);
+                var signatureRLength = BitConverter.ToUInt16(Convert.FromHexString(singleRawOperation.Substring(74 + payloadLength * 2 + unknownConstant + xLength * 2 + yLength * 2, 4)));
+                var signatureR = Convert.FromHexString(singleRawOperation.Substring(78 + payloadLength * 2 + unknownConstant + xLength * 2 + yLength * 2, signatureRLength * 2));
+                var signatureSLength = BitConverter.ToUInt16(Convert.FromHexString(singleRawOperation.Substring(78 + payloadLength * 2 + unknownConstant + xLength * 2 + yLength * 2 + signatureRLength * 2, 4)));
+                var signatureS = Convert.FromHexString(singleRawOperation.Substring(82 + payloadLength * 2 + unknownConstant + xLength * 2 + yLength * 2 + signatureRLength * 2, signatureSLength * 2));
+                return (unsignedOperation, signatureR, signatureS);
+            }
 
 
             byte[] unsignedOperation = null;
@@ -179,6 +261,9 @@ namespace Pascal.RawOperations
                     break;
                 case OperationType.DataOperation:
                     (unsignedOperation, signatureR, signatureS) = GetDataOperationSignature(singleRawOperation);
+                    break;
+                case OperationType.ChangeKeySignedByAnotherAccount:
+                    (unsignedOperation, signatureR, signatureS) = GetPublicKeyChangingOperationSignature(singleRawOperation);
                     break;
             }
 
@@ -195,7 +280,7 @@ namespace Pascal.RawOperations
             stream.Write(BitConverter.GetBytes((ulong)(fee * 10000)));
             stream.WriteByte((byte)payloadType);
             stream.Write(payloadBytes);
-            stream.Write(BitConverter.GetBytes((ushort)0));
+            stream.Write(BitConverter.GetBytes((ushort)0)); //constant
             stream.WriteByte((byte)OperationType.Transaction);
             return stream.ToArray();
         }
@@ -218,5 +303,30 @@ namespace Pascal.RawOperations
             stream.WriteByte((byte)OperationType.DataOperation);
             return stream.ToArray();
         }
+
+        private static byte[] CreateUnsignedChangeKeyOperation(uint signer, uint target, uint signerNOperations, decimal fee, PayloadType payloadType, byte[] payloadBytes, EncryptionType nid, byte[] newKeyX, byte[] newKeyY)
+        {
+            using var stream = new MemoryStream();
+            stream.Write(BitConverter.GetBytes(signer));
+            if(signer != target)
+            {
+                stream.Write(BitConverter.GetBytes(target));
+            }
+            stream.Write(BitConverter.GetBytes(signerNOperations + 1));
+            stream.Write(BitConverter.GetBytes((ulong)(fee * 10000)));
+            
+            stream.WriteByte((byte)payloadType);
+            stream.Write(payloadBytes);
+            stream.Write(BitConverter.GetBytes((ushort)0)); //magic constant
+            stream.Write(BitConverter.GetBytes((ushort)nid));
+            stream.Write(BitConverter.GetBytes((ushort)newKeyX.Length));
+            stream.Write(newKeyX);
+            stream.Write(BitConverter.GetBytes((ushort)newKeyY.Length));
+            stream.Write(newKeyY);
+            stream.WriteByte((byte)OperationType.ChangeKeySignedByAnotherAccount);
+            return stream.ToArray();
+        }
+
+
     }
 }
