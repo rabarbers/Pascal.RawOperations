@@ -6,10 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Pascal.Wallet.Connector" Version="1.0.4" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Pascal.RawOperations\Pascal.RawOperations.csproj" />
   </ItemGroup>
 

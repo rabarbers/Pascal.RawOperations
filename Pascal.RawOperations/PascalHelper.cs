@@ -12,7 +12,8 @@ namespace Pascal.RawOperations
 {
     public class PascalHelper
     {
-        public static string CreateTransaction(uint sender, string senderPrivateKey, uint senderNOperations, uint receiver, decimal amount, decimal fee, PayloadType payloadType, string payload, string password = null)
+        public static string CreateTransaction(uint sender, string senderPrivateKey, uint senderNOperations, uint receiver, decimal amount, decimal fee,
+            PayloadType payloadType = PayloadType.NonDeterministic, string payload = null, string password = null)
         {
             using var stream = new MemoryStream();
 
@@ -137,7 +138,6 @@ namespace Pascal.RawOperations
             stream.Write(BitConverter.GetBytes(signer));
             stream.Write(BitConverter.GetBytes(target));
             stream.Write(BitConverter.GetBytes(signerNOperations + 1));
-            
             stream.Write(BitConverter.GetBytes((ulong)(fee * 10000)));
 
             stream.WriteByte((byte)payloadType);
@@ -161,7 +161,7 @@ namespace Pascal.RawOperations
             stream.Write(BitConverter.GetBytes((ushort)payloadBytes.Length));
             stream.Write(payloadBytes);
 
-            stream.Write(new byte[] { 0, 0, 0, 0, 0, 0, 70, 0}); //8 bytes - constant
+            stream.Write(new byte[] { 0, 0, 0, 0, 0, 0, 70, 0 }); //8 bytes - constant
 
             var (newPubKeyNid, newPubKeyX, newPubKeyY) = CryptoHelper.GetPublicKeyInfo(newEncodedPublicKey);
             var x = Convert.FromHexString(newPubKeyX);
@@ -181,6 +181,73 @@ namespace Pascal.RawOperations
             stream.Write(r);
             stream.Write(BitConverter.GetBytes((ushort)s.Length));
             stream.Write(s);
+
+            return Convert.ToHexString(stream.ToArray());
+        }
+
+        public static string CreateChangePasaInfoOperation(uint signer, uint target, string signerPrivateKey, uint signerNOperations, decimal fee, string newEncodedPublicKey, string newPasaName,
+            ushort newPasaType, byte[] newPasaData, PayloadType payloadType = PayloadType.NonDeterministic, string payload = null, string password = null)
+        {
+            using var stream = new MemoryStream();
+
+            stream.Write(BitConverter.GetBytes((uint)1)); //single operation
+            stream.Write(BitConverter.GetBytes((ushort)OperationType.ChangeAccountInfo));
+            stream.Write(BitConverter.GetBytes((ushort)5)); //protocol
+
+            stream.Write(BitConverter.GetBytes(signer));
+            stream.Write(BitConverter.GetBytes(target));
+            stream.Write(BitConverter.GetBytes(signerNOperations + 1));
+            stream.Write(BitConverter.GetBytes((ulong)(fee * 10000)));
+
+            stream.WriteByte((byte)payloadType);
+            byte[] payloadBytes;
+            switch (payloadType)
+            {
+                case PayloadType.Public | PayloadType.AsciiFormatted:
+                    payloadBytes = Encoding.UTF8.GetBytes(payload);
+                    break;
+                case PayloadType.PasswordEncrypted | PayloadType.AsciiFormatted:
+                    payloadBytes = CryptoHelper.AesEncrypt(payload, password);
+                    break;
+                case PayloadType.RecipientKeyEncrypted | PayloadType.AsciiFormatted:
+                    throw new NotImplementedException();
+                case PayloadType.SenderKeyEncrypted | PayloadType.AsciiFormatted:
+                    throw new NotImplementedException();
+                default:
+                    payloadBytes = new byte[0];
+                    break;
+            }
+            stream.Write(BitConverter.GetBytes((ushort)payloadBytes.Length));
+            stream.Write(payloadBytes);
+
+            //TODO...
+            //public key
+            //changeType: byte
+            //newAccountKey
+            //newName
+            //newType
+            //newData
+
+            //stream.Write(new byte[] { 0, 0, 0, 0, 0, 0, 70, 0 }); //8 bytes - constant
+
+            //var (newPubKeyNid, newPubKeyX, newPubKeyY) = CryptoHelper.GetPublicKeyInfo(newEncodedPublicKey);
+            //var x = Convert.FromHexString(newPubKeyX);
+            //var y = Convert.FromHexString(newPubKeyY);
+            //stream.Write(BitConverter.GetBytes((ushort)newPubKeyNid));
+            //stream.Write(BitConverter.GetBytes((ushort)x.Length));
+            //stream.Write(x);
+            //stream.Write(BitConverter.GetBytes((ushort)y.Length));
+            //stream.Write(y);
+
+            //var unsignedOperation = CreateUnsignedChangeKeyOperation(signer, target, signerNOperations, fee, payloadType, payloadBytes, newPubKeyNid, x, y);
+
+            //var hash = CryptoHelper.GetHash(unsignedOperation);
+            //var (signerKeyType, signerKey) = CryptoHelper.GetPrivateKeyInfo(signerPrivateKey);
+            //var (r, s) = CryptoHelper.SignOperation(signerKeyType, signerKey, hash);
+            //stream.Write(BitConverter.GetBytes((ushort)r.Length));
+            //stream.Write(r);
+            //stream.Write(BitConverter.GetBytes((ushort)s.Length));
+            //stream.Write(s);
 
             return Convert.ToHexString(stream.ToArray());
         }
@@ -325,8 +392,8 @@ namespace Pascal.RawOperations
             stream.Write(newKeyY);
             stream.WriteByte((byte)OperationType.ChangeKeySignedByAnotherAccount);
             return stream.ToArray();
+
+            //TODO...
         }
-
-
     }
 }
