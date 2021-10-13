@@ -11,12 +11,12 @@ namespace Pascal.RawOperations.Demo
     {
         static async Task Main()
         {
-            //Replace sender, receiver and other data as needed. Be careful and do not share your private keys with others! Private key provided for demo purposes, it does not contain real Pascals or Pascal Accounts!
-            var nodeAddress = "192.168.88.240";
+            //Replace sender, receiver and other data as needed. 
+            var nodeAddress = "192.168.88.240"; //change to your address
             var nodePort = 4004;
             var sender = 1141769U; //this account pays transaction fee
             var receiver = 796500U;
-            var signerPrivateKey = "...";
+            var signerPrivateKey = "..."; //Be careful and do not share your private keys with others!
             var amount = 0.0001M;
             var fee = 0.0001M;
 
