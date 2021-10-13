@@ -50,7 +50,10 @@ namespace Pascal.RawOperations.Demo
 ### Supported features
 * RawOperation creation for transactions
 * RawOperation creation for data operations
+* RawOperation for changing PASA public key
 * Supported payload methods: public and AES encrypted
+* Reading account info from the Pascal network
+* Sending the raw operation to the Pascal network for the execution (no feedback if the operation is successful).
 
 ### For technical support contact Rabarbers and be polite
 
