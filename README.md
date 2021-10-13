@@ -1,7 +1,7 @@
 # Pascal.RawOperations
 .NET library to create PascalCoin rawOperations
 Based on the source code of [PascalCoin](https://github.com/PascalCoin/PascalCoin) and [NPascalCoin](https://github.com/Sphere10/NPascalCoin). 
-RawOperations documentation: https://github.com/rabarbers/Pascal.RawOperations/wiki
+RawOperations documentation: https://github.com/PascalCoinDev/PascalCoin/wiki/Create-operations
 ## Nuget package
 https://www.nuget.org/packages/Pascal.RawOperations
 ### RawOperations demo
