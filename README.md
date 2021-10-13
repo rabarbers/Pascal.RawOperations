@@ -9,7 +9,6 @@ RawOperations can be executed using [pascal.wallet.connector](https://github.com
 ```c#
 using System;
 using System.Threading.Tasks;
-using Pascal.Wallet.Connector;
 
 namespace Pascal.RawOperations.Demo
 {
@@ -17,29 +16,31 @@ namespace Pascal.RawOperations.Demo
     {
         static async Task Main()
         {
-            //Port 4203 is for testnet, MainNet port: 4003.
-            var connector = new PascalConnector("127.0.0.1", 4203);
-
-            //Replace sender, receiver and other data as needed. Be careful and do not share your private keys with others! Private key provided for demo purposes, it does not contain real Pascals or Pascal Accounts!
-            var sender = 32330U;
-            var receiver = 32332U;
-            var senderPrivateKey = "CA022000DC3778C0EA88CEF38EBB2E9A9E990FC37A65DCA7B3E547A028B39CE1805FA10D";
-            var password = "Password";
-            var amount = 0.0036M;
+            //Replace sender, receiver and other data as needed. 
+            var nodeAddress = "192.168.88.240"; //change to the address of your Pascal wallet
+            var nodePort = 4004;
+            var sender = 1141769U; //this account pays transaction fee
+            var receiver = 796500U;
+            var signerPrivateKey = "..."; //Be careful and do not share your private keys with others!
+            var amount = 0.0001M;
             var fee = 0.0001M;
-            var payloadType = Payload.AesEncrypted; //Recommended to use predefined payloadType templates
-            var message = "Hello world!";
-            uint nOperation = 37; //this should be the sender (or signer if the signer is used) current account nOperations value that is stored on SafeBox. NOperations is mechanism to avoid double spending.
 
-            var rawOperation = PascalHelper.CreateTransaction(sender, senderPrivateKey, nOperation, receiver, amount, fee, payloadType, message, password);
-            var response = await connector.ExecuteOperationsAsync(rawOperation);
-            if(response.Result != null)
+            try
             {
-                Console.WriteLine("Operation executed successfully!");
+                var accountInfo = await PascalNetwork.RequestAccountInfoAsync(nodeAddress, nodePort, sender);
+                Console.WriteLine(accountInfo);
+                
+                var rawOperation = PascalHelper.CreateTransaction(sender, signerPrivateKey, accountInfo.NOperations, receiver, amount, fee);
+                await PascalNetwork.SendOperationsAsync(nodeAddress, nodePort, rawOperation);
+                Console.WriteLine($"\nSent operation: {rawOperation}\n");
+
+                accountInfo = await PascalNetwork.RequestAccountInfoAsync(nodeAddress, nodePort, sender);
+                Console.WriteLine(accountInfo);
+
             }
-            else
+            catch (Exception e)
             {
-                Console.WriteLine(response.Error.Message);
+                Console.WriteLine(e.Message);
             }
         }
     }
